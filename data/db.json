@@ -1,0 +1,34 @@
+{
+  "farms": [
+    {
+      "id": "mm0ifgcaud2skaovft",
+      "name": "My Farm",
+      "createdAt": "2026-02-24T11:16:15.610Z",
+      "updatedAt": "2026-02-24T11:16:15.610Z"
+    }
+  ],
+  "expenses": [
+    {
+      "farmId": "mm0ifgcaud2skaovft",
+      "date": "2026-02-24T11:16:21.269Z",
+      "amount": 15000,
+      "sender": "Me",
+      "receiver": "Farm Store",
+      "purpose": "Feed",
+      "type": "expense",
+      "id": "mm0ifkphkc7cn729rfa",
+      "createdAt": "2026-02-24T11:16:21.269Z"
+    }
+  ],
+  "eggs": [
+    {
+      "farmId": "mm0ifgcaud2skaovft",
+      "date": "2026-02-24T11:16:26.892Z",
+      "cageNo": "D4",
+      "quantity": 50,
+      "cracks": 2,
+      "id": "mm0ifp1p3e32gdqk3n2",
+      "createdAt": "2026-02-24T11:16:26.893Z"
+    }
+  ]
+}

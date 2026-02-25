@@ -1,0 +1,41 @@
+"Date","Expense Ammount","Sender","Reciver","Purpose"
+1-Jan-2026,,,,
+2-Jan-2026,,,,
+3-Jan-2026,,,,
+4-Jan-2026,,,,
+5-Jan-2026,"₦15,000.00","Dosumu Comfort Ucha","Uzoma  Gift Igbokwe","Farm Supplies"
+,"₦46,000.00","Dosumu Comfort Ucha","Uzoma  Gift Igbokwe","Farm Supplies"
+6-Jan-2026,,,,
+7-Jan-2026,,,,
+8-Jan-2026,,,,
+9-Jan-2026,,,,
+10-Jan-2026,"₦20,000.00","Dosumu Comfort Ucha","Opeyemi Dosumu","Vehicle Maintainance & Repair"
+11-Jan-2026,,,,
+12-Jan-2026,"₦35,000.00","Dosumu Comfort Ucha","Opeyemi Dosumu","Vehicle Maintainance & Repair"
+,"₦35,000.00","Dosumu Comfort Ucha","Opeyemi Dosumu","Solar Powerd Light"
+13-Jan-2026,,,,
+14-Jan-2026,,,,
+15-Jan-2026,,,,
+16-Jan-2026,"₦25,000.00","Dosumu Comfort Ucha","Opeyemi Dosumu","Purchase of Animals"
+17-Jan-2026,"₦11,500.00","Dosumu Comfort Ucha","Uzoma  Gift Igbokwe",
+18-Jan-2026,,,,
+19-Jan-2026,,,,
+20-Jan-2026,,,,
+21-Jan-2026,"₦6,500.00","Dosumu Comfort Ucha","Ifanyi Christopher Ogbodo","Farm Supplies"
+22-Jan-2026,"₦5,000.00","Dosumu Comfort Ucha","Uzoma  Gift Igbokwe","Transport"
+,"₦150,500.00","Dosumu Comfort Ucha","Uzoma  Gift Igbokwe","Pig Feed
+Stationary
+Charcoal
+Firewood
+Transport"
+23-Jan-2026,,,,
+24-Jan-2026,,,,
+,,,,
+25-Jan-2026,,,,
+26-Jan-2026,,,,
+27-Jan-2026,"₦21,000.00","Dosumu Comfort Ucha",,"Pig Feed"
+28-Jan-2026,,,,
+29-Jan-2026,"₦4,000.00","Dosumu Comfort Ucha","Uzoma  Gift Igbokwe","vaccine "
+30-Jan-2026,,,,
+31-Jan-2026,,,,
+"Total Expenditure","=SUM(B2:B36)",,,

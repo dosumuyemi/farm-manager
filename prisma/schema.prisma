@@ -1,0 +1,101 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Farm {
+  id        String     @id @default(cuid())
+  name      String
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  animals   Animal[]
+  records   FarmRecord[]
+  reminders Reminder[]
+  expenses  FinancialRecord[]
+  eggs      EggRecord[]
+}
+
+model Animal {
+  id          String     @id @default(cuid())
+  farmId      String
+  farm        Farm       @relation(fields: [farmId], references: [id])
+  name        String
+  type        String     // chicken, goat, cow, etc.
+  quantity    Int        @default(1)
+  breed       String?
+  cost        Float?
+  dateAcquired DateTime  @default(now())
+  status      String     @default("active") // active, sold, dead
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  records     AnimalRecord[]
+}
+
+model AnimalRecord {
+  id          String   @id @default(cuid())
+  animalId    String
+  animal      Animal   @relation(fields: [animalId], references: [id])
+  type        String   // birth, death, feed, medication, egg, milk, weight
+  quantity    Float?
+  amount      Float?   // cost if expense, income if sale
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model FarmRecord {
+  id          String   @id @default(cuid())
+  farmId      String
+  farm        Farm     @relation(fields: [farmId], references: [id])
+  type        String   // expense, income, task, observation
+  category    String?  // feed, labor, medicine, equipment, sales
+  amount      Float?
+  description String?
+  date        DateTime @default(now())
+  createdAt   DateTime @default(now())
+}
+
+model Reminder {
+  id          String   @id @default(cuid())
+  farmId      String
+  farm        Farm     @relation(fields: [farmId], references: [id])
+  title       String
+  description String?
+  type        String   // feed, vaccination, cleaning, payment, task
+  dueDate     DateTime
+  completed   Boolean  @default(false)
+  recurring   Boolean  @default(false)
+  repeatDays  Int?     // days to repeat if recurring
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model FinancialRecord {
+  id          String   @id @default(cuid())
+  farmId      String
+  farm        Farm     @relation(fields: [farmId], references: [id])
+  date        DateTime @default(now())
+  amount      Float
+  sender      String
+  receiver    String
+  purpose     String
+  type        String   @default("expense") // expense or income
+  createdAt   DateTime @default(now())
+}
+
+model EggRecord {
+  id          String   @id @default(cuid())
+  farmId      String
+  farm        Farm     @relation(fields: [farmId], references: [id])
+  date        DateTime @default(now())
+  cageNo      String
+  quantity    Int
+  cracks      Int      @default(0)
+  temperature Float?
+  humidity    Float?
+  notes       String?
+  createdAt   DateTime @default(now())
+}
