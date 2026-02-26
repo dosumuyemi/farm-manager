@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { syncService } from '@/lib/sync';
 
 function sanitizeString(str: string | undefined, maxLength = 200): string {
@@ -38,6 +38,8 @@ export async function POST(request: NextRequest) {
       type: sanitizeString(body.type, 20),
     };
 
+    const supabase = getSupabase();
+
     // Try Supabase first
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
@@ -71,6 +73,7 @@ export async function GET(request: NextRequest) {
 
   try {
     let records: any[] = [];
+    const supabase = getSupabase();
 
     // Try Supabase first
     if (isSupabaseConfigured && supabase) {

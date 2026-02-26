@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './supabase';
+import { getSupabase, isSupabaseConfigured } from './supabase';
 
 const OFFLINE_QUEUE_KEY = 'farm_sync_queue';
 
@@ -15,7 +15,7 @@ export const syncService = {
 
   // Queue operations for offline sync
   addToQueue: (table: string, action: 'create' | 'update' | 'delete', data: any) => {
-    if (!isSupabaseConfigured) return;
+    if (!isSupabaseConfigured || typeof window === 'undefined') return;
     
     const queue = syncService.getQueue();
     queue.push({
@@ -35,6 +35,7 @@ export const syncService = {
   },
 
   clearQueue: () => {
+    if (typeof window === 'undefined') return;
     localStorage.removeItem(OFFLINE_QUEUE_KEY);
   },
 
@@ -45,11 +46,14 @@ export const syncService = {
     const queue = syncService.getQueue();
     if (queue.length === 0) return;
 
+    const supabase = getSupabase();
+    if (!supabase) return;
+
     const failedItems: SyncQueueItem[] = [];
 
     for (const item of queue) {
       try {
-        await syncService.syncItem(item);
+        await syncService.syncItem(item, supabase);
       } catch (error) {
         console.error('Sync failed for item:', item, error);
         failedItems.push(item);
@@ -57,12 +61,12 @@ export const syncService = {
     }
 
     // Keep failed items in queue
-    localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(failedItems));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(OFFLINE_QUEUE_KEY, JSON.stringify(failedItems));
+    }
   },
 
-  syncItem: async (item: SyncQueueItem) => {
-    if (!supabase) throw new Error('Supabase not configured');
-
+  syncItem: async (item: SyncQueueItem, supabase: any) => {
     const { table, action, data } = item;
 
     switch (table) {
@@ -128,6 +132,7 @@ export const syncService = {
 
   // Fetch all data from Supabase
   fetchFromCloud: async (table: string) => {
+    const supabase = getSupabase();
     if (!supabase) throw new Error('Supabase not configured');
     
     const { data, error } = await supabase.from(table).select('*');
@@ -153,7 +158,7 @@ export const syncService = {
 
       for (const table of tables) {
         const cloudData = await syncService.fetchFromCloud(table);
-        if (cloudData && cloudData.length > 0) {
+        if (cloudData && cloudData.length > 0 && typeof window !== 'undefined') {
           localStorage.setItem(`farm_cloud_${table}`, JSON.stringify(cloudData));
         }
       }
@@ -167,6 +172,7 @@ export const syncService = {
 
   // Listen for real-time changes
   subscribe: (table: string, callback: (payload: any) => void) => {
+    const supabase = getSupabase();
     if (!supabase) return () => {};
 
     const subscription = supabase

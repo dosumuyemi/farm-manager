@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { getSupabase, isSupabaseConfigured } from '@/lib/supabase';
 import { syncService } from '@/lib/sync';
 
 function sanitizeString(str: string | undefined, maxLength = 200): string {
@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
       age_weeks: parseInt(body.ageWeeks) || 0,
       average_weight: body.averageWeight ? parseFloat(body.averageWeight) : null,
     };
+
+    const supabase = getSupabase();
 
     // Try Supabase first
     if (isSupabaseConfigured && supabase) {
@@ -69,6 +71,8 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = getSupabase();
+
     // Try Supabase first
     if (isSupabaseConfigured && supabase) {
       const { data, error } = await supabase
