@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { syncService } from '@/lib/sync';
 
 function sanitizeString(str: string | undefined, maxLength = 200): string {
   if (!str) return '';
@@ -25,8 +26,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: validation.error }, { status: 400 });
     }
     
-    const record = db.expenses.create({
-      farmId: sanitizeString(body.farmId),
+    const record = {
+      farm_id: sanitizeString(body.farmId),
+      house_id: sanitizeString(body.houseId),
       date: body.date ? new Date(body.date).toISOString() : new Date().toISOString(),
       amount: Math.abs(parseFloat(body.amount)),
       sender: sanitizeString(body.sender),
@@ -34,8 +36,25 @@ export async function POST(request: NextRequest) {
       purpose: sanitizeString(body.purpose),
       description: sanitizeString(body.description),
       type: sanitizeString(body.type, 20),
-    });
-    return NextResponse.json(record);
+    };
+
+    // Try Supabase first
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase
+        .from('financial_records')
+        .insert(record)
+        .select()
+        .single();
+      
+      if (!error) {
+        // Add to sync queue as backup
+        syncService.addToQueue('financial_records', 'create', record);
+        return NextResponse.json(data);
+      }
+    }
+
+    // Fallback: local JSON (would need to be implemented)
+    return NextResponse.json({ error: 'Storage unavailable' }, { status: 503 });
   } catch (error) {
     console.error('Error creating expense:', error);
     return NextResponse.json({ error: 'Failed to create expense' }, { status: 500 });
@@ -51,12 +70,22 @@ export async function GET(request: NextRequest) {
   const export_ = searchParams.get('export');
 
   try {
-    const records = db.expenses.findMany({ 
-      farmId: farmId || undefined, 
-      type: type || undefined,
-      startDate: startDate || undefined,
-      endDate: endDate || undefined,
-    });
+    let records: any[] = [];
+
+    // Try Supabase first
+    if (isSupabaseConfigured && supabase) {
+      let query = supabase.from('financial_records').select('*');
+      
+      if (farmId) query = query.eq('farm_id', farmId);
+      if (type && type !== 'income') query = query.eq('type', type);
+      if (startDate) query = query.gte('date', startDate);
+      if (endDate) query = query.lte('date', endDate);
+      
+      query = query.order('date', { ascending: false });
+      
+      const { data, error } = await query;
+      if (!error) records = data || [];
+    }
 
     if (export_ === 'csv') {
       const csvHeader = 'Date,Type,Amount,Sender,Receiver,Purpose/Description';

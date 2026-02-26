@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/db';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase';
+import { syncService } from '@/lib/sync';
 
 function sanitizeString(str: string | undefined, maxLength = 200): string {
   if (!str) return '';
@@ -35,17 +36,33 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Cracks cannot exceed quantity' }, { status: 400 });
     }
     
-    const record = db.eggs.create({
-      farmId: sanitizeString(body.farmId),
+    const record = {
+      farm_id: sanitizeString(body.farmId),
+      house_id: sanitizeString(body.houseId),
       date: body.date ? new Date(body.date).toISOString() : new Date().toISOString(),
-      cageNo: sanitizeString(body.cageNo, 10).toUpperCase(),
+      cage_no: sanitizeString(body.cageNo, 10).toUpperCase(),
       quantity,
       cracks,
-      temperature: body.temperature ? Math.min(Math.max(parseFloat(body.temperature), -50), 100) : undefined,
-      humidity: body.humidity ? Math.min(Math.max(parseFloat(body.humidity), 0), 100) : undefined,
+      temperature: body.temperature ? Math.min(Math.max(parseFloat(body.temperature), -50), 100) : null,
+      humidity: body.humidity ? Math.min(Math.max(parseFloat(body.humidity), 0), 100) : null,
       notes: sanitizeString(body.notes, 500),
-    });
-    return NextResponse.json(record);
+    };
+
+    // Try Supabase first
+    if (isSupabaseConfigured && supabase) {
+      const { data, error } = await supabase
+        .from('egg_records')
+        .insert(record)
+        .select()
+        .single();
+      
+      if (!error) {
+        syncService.addToQueue('egg_records', 'create', record);
+        return NextResponse.json(data);
+      }
+    }
+
+    return NextResponse.json({ error: 'Storage unavailable' }, { status: 503 });
   } catch (error) {
     console.error('Error creating egg record:', error);
     return NextResponse.json({ error: 'Failed to create egg record' }, { status: 500 });
@@ -61,17 +78,35 @@ export async function GET(request: NextRequest) {
   const export_ = searchParams.get('export');
 
   try {
-    const records = db.eggs.findMany({ 
-      farmId: farmId || undefined, 
-      cageNo: cageNo || undefined,
-      month: month || undefined, 
-      year: year || undefined 
-    });
+    let records: any[] = [];
+
+    // Try Supabase first
+    if (isSupabaseConfigured && supabase) {
+      let query = supabase.from('egg_records').select('*');
+      
+      if (farmId) query = query.eq('farm_id', farmId);
+      if (cageNo) query = query.eq('cage_no', cageNo);
+      
+      query = query.order('date', { ascending: false });
+      
+      const { data, error } = await query;
+      if (!error) records = data || [];
+
+      // Filter by month/year in memory if needed
+      if (month && year) {
+        const m = parseInt(month);
+        const y = parseInt(year);
+        records = records.filter(r => {
+          const d = new Date(r.date);
+          return d.getMonth() + 1 === m && d.getFullYear() === y;
+        });
+      }
+    }
 
     if (export_ === 'csv') {
       const csvHeader = 'Date,Cage,Quantity,Cracks,Temperature,Humidity,Notes';
       const csvRows = records.map(r => 
-        `${new Date(r.date).toISOString().split('T')[0]},${r.cageNo},${r.quantity},${r.cracks},${r.temperature || ''},${r.humidity || ''},"${r.notes || ''}"`
+        `${new Date(r.date).toISOString().split('T')[0]},${r.cage_no},${r.quantity},${r.cracks},${r.temperature || ''},${r.humidity || ''},"${r.notes || ''}"`
       );
       const csv = [csvHeader, ...csvRows].join('\n');
       
