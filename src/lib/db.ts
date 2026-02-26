@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
+const CACHE_TTL = 1000; // 1 second cache
 
 interface Farm {
   id: string;
@@ -42,6 +43,13 @@ interface Database {
   eggs: EggRecord[];
 }
 
+interface CacheEntry {
+  data: Database;
+  timestamp: number;
+}
+
+let dbCache: CacheEntry | null = null;
+
 function readDB(): Database {
   try {
     if (!fs.existsSync(DB_PATH)) {
@@ -53,12 +61,27 @@ function readDB(): Database {
   }
 }
 
+function getCachedDB(): Database {
+  const now = Date.now();
+  if (dbCache && now - dbCache.timestamp < CACHE_TTL) {
+    return dbCache.data;
+  }
+  const data = readDB();
+  dbCache = { data, timestamp: now };
+  return data;
+}
+
+function invalidateCache() {
+  dbCache = null;
+}
+
 function writeDB(data: Database) {
   const dir = path.dirname(DB_PATH);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
   fs.writeFileSync(DB_PATH, JSON.stringify(data, null, 2));
+  invalidateCache();
 }
 
 function generateId(): string {
@@ -68,7 +91,7 @@ function generateId(): string {
 export const db = {
   farms: {
     create: (name: string): Farm => {
-      const data = readDB();
+      const data = getCachedDB();
       const farm: Farm = {
         id: generateId(),
         name,
@@ -80,15 +103,15 @@ export const db = {
       return farm;
     },
     findMany: (): Farm[] => {
-      return readDB().farms;
+      return getCachedDB().farms;
     },
     findById: (id: string): Farm | undefined => {
-      return readDB().farms.find(f => f.id === id);
+      return getCachedDB().farms.find(f => f.id === id);
     },
   },
   expenses: {
     create: (record: Omit<FinancialRecord, 'id' | 'createdAt'>): FinancialRecord => {
-      const data = readDB();
+      const data = getCachedDB();
       const expense: FinancialRecord = {
         ...record,
         id: generateId(),
@@ -99,7 +122,7 @@ export const db = {
       return expense;
     },
     findMany: (filters?: { farmId?: string; type?: string; month?: string; year?: string; startDate?: string; endDate?: string }): FinancialRecord[] => {
-      let records = readDB().expenses;
+      let records = getCachedDB().expenses;
       
       if (filters?.farmId) {
         records = records.filter(e => e.farmId === filters.farmId);
@@ -126,7 +149,7 @@ export const db = {
   },
   eggs: {
     create: (record: Omit<EggRecord, 'id' | 'createdAt'>): EggRecord => {
-      const data = readDB();
+      const data = getCachedDB();
       const egg: EggRecord = {
         ...record,
         id: generateId(),
@@ -137,7 +160,7 @@ export const db = {
       return egg;
     },
     findMany: (filters?: { farmId?: string; cageNo?: string; month?: string; year?: string }): EggRecord[] => {
-      let records = readDB().eggs;
+      let records = getCachedDB().eggs;
       
       if (filters?.farmId) {
         records = records.filter(e => e.farmId === filters.farmId);

@@ -1,18 +1,39 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+function sanitizeString(str: string | undefined, maxLength = 200): string {
+  if (!str) return '';
+  return str.slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+function validateExpenseInput(body: any): { valid: boolean; error?: string } {
+  if (!body.farmId || typeof body.farmId !== 'string') {
+    return { valid: false, error: 'Invalid farmId' };
+  }
+  if (!body.amount || isNaN(parseFloat(body.amount))) {
+    return { valid: false, error: 'Invalid amount' };
+  }
+  return { valid: true };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    const validation = validateExpenseInput(body);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    
     const record = db.expenses.create({
-      farmId: body.farmId,
+      farmId: sanitizeString(body.farmId),
       date: body.date ? new Date(body.date).toISOString() : new Date().toISOString(),
-      amount: parseFloat(body.amount),
-      sender: body.sender || '',
-      receiver: body.receiver || '',
-      purpose: body.purpose || '',
-      description: body.description || '',
-      type: body.type || 'expense',
+      amount: Math.abs(parseFloat(body.amount)),
+      sender: sanitizeString(body.sender),
+      receiver: sanitizeString(body.receiver),
+      purpose: sanitizeString(body.purpose),
+      description: sanitizeString(body.description),
+      type: sanitizeString(body.type, 20),
     });
     return NextResponse.json(record);
   } catch (error) {

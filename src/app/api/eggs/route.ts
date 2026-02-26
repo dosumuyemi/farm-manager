@@ -1,18 +1,49 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+function sanitizeString(str: string | undefined, maxLength = 200): string {
+  if (!str) return '';
+  return str.slice(0, maxLength).replace(/[<>]/g, '');
+}
+
+function validateEggInput(body: any): { valid: boolean; error?: string } {
+  if (!body.farmId || typeof body.farmId !== 'string') {
+    return { valid: false, error: 'Invalid farmId' };
+  }
+  if (!body.cageNo || typeof body.cageNo !== 'string') {
+    return { valid: false, error: 'Cage number is required' };
+  }
+  if (!body.quantity || isNaN(parseInt(body.quantity))) {
+    return { valid: false, error: 'Invalid quantity' };
+  }
+  return { valid: true };
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+    
+    const validation = validateEggInput(body);
+    if (!validation.valid) {
+      return NextResponse.json({ error: validation.error }, { status: 400 });
+    }
+    
+    const quantity = Math.abs(parseInt(body.quantity));
+    const cracks = body.cracks ? Math.abs(parseInt(body.cracks)) : 0;
+    
+    if (cracks > quantity) {
+      return NextResponse.json({ error: 'Cracks cannot exceed quantity' }, { status: 400 });
+    }
+    
     const record = db.eggs.create({
-      farmId: body.farmId,
+      farmId: sanitizeString(body.farmId),
       date: body.date ? new Date(body.date).toISOString() : new Date().toISOString(),
-      cageNo: body.cageNo,
-      quantity: parseInt(body.quantity),
-      cracks: parseInt(body.cracks) || 0,
-      temperature: body.temperature ? parseFloat(body.temperature) : undefined,
-      humidity: body.humidity ? parseFloat(body.humidity) : undefined,
-      notes: body.notes || undefined,
+      cageNo: sanitizeString(body.cageNo, 10).toUpperCase(),
+      quantity,
+      cracks,
+      temperature: body.temperature ? Math.min(Math.max(parseFloat(body.temperature), -50), 100) : undefined,
+      humidity: body.humidity ? Math.min(Math.max(parseFloat(body.humidity), 0), 100) : undefined,
+      notes: sanitizeString(body.notes, 500),
     });
     return NextResponse.json(record);
   } catch (error) {
